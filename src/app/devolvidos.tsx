@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, Button } from "react-native";
-import * as FileSystem from "expo-file-system";
+import { View, Text, FlatList, StyleSheet, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Card from "./components/card";
 
 type Livro = {
@@ -11,38 +11,46 @@ type Livro = {
   devolvido?: boolean;
 };
 
-const fileUri = FileSystem.documentDirectory + "livros.json";
-
 export default function Devolvidos() {
   const [livros, setLivros] = useState<Livro[]>([]);
 
-  const carregar = async () => {
-    try {
-      const conteudo = await FileSystem.readAsStringAsync(fileUri);
-      const dados: Livro[] = JSON.parse(conteudo);
-      const filtrados = dados.filter((livro) => livro.devolvido);
-      setLivros(filtrados);
-    } catch {
-      setLivros([]);
-    }
-  };
-
   useEffect(() => {
-    carregar();
+    carregarLivrosDevolvidos();
   }, []);
 
-  const desmarcarComoDevolvido = async (id: string) => {
-    const conteudo = await FileSystem.readAsStringAsync(fileUri);
-    const todosLivros: Livro[] = JSON.parse(conteudo);
+  async function carregarLivrosDevolvidos() {
+    try {
+      const jsonValue = await AsyncStorage.getItem("livros");
+      if (jsonValue != null) {
+        const todosLivros: Livro[] = JSON.parse(jsonValue);
+        const livrosDevolvidos = todosLivros.filter((livro) => livro.devolvido);
+        setLivros(livrosDevolvidos);
+      } else {
+        setLivros([]);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar livros devolvidos", e);
+    }
+  }
 
-    const atualizados = todosLivros.map((livro) =>
-      livro.id === id ? { ...livro, devolvido: false } : livro
-    );
+  async function desmarcarComoDevolvido(id: string) {
+    try {
+      const jsonValue = await AsyncStorage.getItem("livros");
+      if (jsonValue != null) {
+        const todosLivros: Livro[] = JSON.parse(jsonValue);
+        const livrosAtualizados = todosLivros.map((livro) =>
+          livro.id === id ? { ...livro, devolvido: false } : livro
+        );
+        await AsyncStorage.setItem("livros", JSON.stringify(livrosAtualizados));
 
-    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(atualizados));
-    const filtrados = atualizados.filter((livro) => livro.devolvido);
-    setLivros(filtrados);
-  };
+        // Atualiza o estado com os livros devolvidos restantes
+        setLivros(livrosAtualizados.filter((livro) => livro.devolvido));
+      }
+    } catch (e) {
+      Alert.alert("Erro", "Não foi possível atualizar o livro.");
+      console.error("Erro ao desmarcar como devolvido", e);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -59,6 +67,11 @@ export default function Devolvidos() {
             onDesmarcar={() => desmarcarComoDevolvido(item.id)}
           />
         )}
+        ListEmptyComponent={
+          <Text style={{ textAlign: "center", marginTop: 20 }}>
+            Nenhum livro devolvido.
+          </Text>
+        }
       />
     </View>
   );

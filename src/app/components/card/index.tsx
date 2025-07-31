@@ -16,13 +16,20 @@ export default function Card(props: {
       <Text style={styles.data}>Retirada: {props.retirada}</Text>
       <Text style={styles.data}>Devolução: {props.devolucao}</Text>
 
-      {props.onDevolver && (
-        <Button title="Marcar como Devolvido" onPress={props.onDevolver} />
-      )}
+      <View style={{ marginTop: 10 }}>
+        {props.onDevolver && (
+          <Button title="Marcar como Devolvido" onPress={props.onDevolver} />
+        )}
 
-      {props.onDesmarcar && (
-        <Button title="Desmarcar como Devolvido" onPress={props.onDesmarcar} />
-      )}
+        {props.onDesmarcar && (
+          <View style={{ marginTop: props.onDevolver ? 10 : 0 }}>
+            <Button
+              title="Desmarcar como Devolvido"
+              onPress={props.onDesmarcar}
+            />
+          </View>
+        )}
+      </View>
     </View>
   );
 }

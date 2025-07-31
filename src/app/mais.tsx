@@ -1,69 +1,60 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  FlatList,
-  StyleSheet,
-  Alert,
-} from "react-native";
-import * as FileSystem from "expo-file-system";
-
-const fileUri = FileSystem.documentDirectory + "livros.json";
+import React, { useState } from "react";
+import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Livro = {
   id: string;
   titulo: string;
   retirada: string;
-  dataDevolucao: string;
+  devolucao: string;
+  devolvido?: boolean;
 };
 
 export default function AdicionarLivro() {
   const [titulo, setTitulo] = useState("");
   const [retirada, setRetirada] = useState("");
   const [devolucao, setDevolucao] = useState("");
-  const [livros, setLivros] = useState<Livro[]>([]);
 
-  // Carrega os livros do arquivo ao iniciar
-  useEffect(() => {
-    const carregar = async () => {
-      try {
-        const file = await FileSystem.readAsStringAsync(fileUri);
-        setLivros(JSON.parse(file));
-      } catch {
-        await FileSystem.writeAsStringAsync(fileUri, JSON.stringify([]));
-      }
-    };
-    carregar();
-  }, []);
-
-  const salvar = async (dados: Livro[]) => {
-    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(dados));
-  };
-
-  const adicionarLivro = async () => {
+  async function adicionarLivro() {
     if (!titulo || !retirada || !devolucao) {
-      Alert.alert("Preencha todos os campos!");
+      Alert.alert("Erro", "Por favor, preencha todos os campos.");
       return;
     }
 
-    const novo = {
-      id: Date.now().toString(),
-      titulo,
-      retirada,
-      dataDevolucao: devolucao,
-    };
+    // Simples validação de data (YYYY-MM-DD)
+    const regexData = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regexData.test(retirada) || !regexData.test(devolucao)) {
+      Alert.alert(
+        "Erro",
+        "Por favor, use o formato correto para as datas: AAAA-MM-DD"
+      );
+      return;
+    }
 
-    const novaLista = [...livros, novo];
-    setLivros(novaLista);
-    await salvar(novaLista);
+    try {
+      const jsonValue = await AsyncStorage.getItem("livros");
+      const livros: Livro[] = jsonValue ? JSON.parse(jsonValue) : [];
 
-    // Limpa os campos
-    setTitulo("");
-    setRetirada("");
-    setDevolucao("");
-  };
+      const novoLivro: Livro = {
+        id: Date.now().toString(),
+        titulo,
+        retirada,
+        devolucao,
+        devolvido: false,
+      };
+
+      const livrosAtualizados = [...livros, novoLivro];
+      await AsyncStorage.setItem("livros", JSON.stringify(livrosAtualizados));
+
+      Alert.alert("Sucesso", "Livro adicionado com sucesso!");
+      setTitulo("");
+      setRetirada("");
+      setDevolucao("");
+    } catch (e) {
+      Alert.alert("Erro", "Não foi possível salvar o livro.");
+      console.error("Erro ao salvar livro", e);
+    }
+  }
 
   return (
     <View style={styles.container}>
